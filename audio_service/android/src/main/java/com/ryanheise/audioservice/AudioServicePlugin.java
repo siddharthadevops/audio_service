@@ -70,6 +70,22 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
     public static synchronized FlutterEngine getFlutterEngine(Context context) {
         FlutterEngine flutterEngine = FlutterEngineCache.getInstance().get(flutterEngineId);
         if (flutterEngine == null) {
+            // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
+            boolean isDetached = !(context instanceof Activity) && 
+                                 !(context instanceof FlutterActivity) && 
+                                 !(context instanceof AudioServiceFragmentActivity);
+            
+            // WEEBU MODIFICATION: If starting detached (no UI), delay 2 seconds to avoid
+            // race condition with flutter_background_geolocation plugin
+            if (isDetached) {
+                android.util.Log.i("AudioServicePlugin", "WEEBU: Detached mode detected, applying 2s delay before creating FlutterEngine");
+                try {
+                    Thread.sleep(2000); // 2 second delay
+                } catch (InterruptedException e) {
+                    android.util.Log.w("AudioServicePlugin", "WEEBU: Delay interrupted: " + e.getMessage());
+                }
+            }
+            
             // XXX: The constructor triggers onAttachedToEngine so this variable doesn't help us.
             // Maybe need a boolean flag to tell us we're currently loading the main flutter engine.
             flutterEngine = new FlutterEngine(context.getApplicationContext());
