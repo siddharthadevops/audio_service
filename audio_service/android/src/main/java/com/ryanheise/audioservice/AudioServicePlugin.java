@@ -116,13 +116,19 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
                                  !(context instanceof FlutterActivity) && 
                                  !(context instanceof AudioServiceFragmentActivity);
             
-            // WEEBU MODIFICATION: If starting detached (no UI), delay 2 seconds to avoid
+            // WEEBU MODIFICATION: If starting detached (no UI), delay to avoid
             // race condition with flutter_background_geolocation plugin
             if (isDetached) {
-                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying 2s delay - Time: " + System.currentTimeMillis());
+                // Check if we're in debug mode
+                boolean isDebug = (context.getApplicationInfo().flags & 
+                                   android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+                
+                int delayMs = isDebug ? 10000 : 2000; // 10 seconds in debug, 2 seconds in release
+                
+                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay (DEBUG=" + isDebug + ") - Time: " + System.currentTimeMillis());
                 try {
-                    Thread.sleep(2000); // 2 second delay
-                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed - Time: " + System.currentTimeMillis());
+                    Thread.sleep(delayMs);
+                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed after " + delayMs + "ms - Time: " + System.currentTimeMillis());
                 } catch (InterruptedException e) {
                     logToFile(context, "🔴 AUDIO-PLUGIN: Delay interrupted: " + e.getMessage() + " - Time: " + System.currentTimeMillis());
                 }
