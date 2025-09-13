@@ -61,10 +61,24 @@ import android.util.Log;
 public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
     private static String flutterEngineId = "audio_service_engine";
     
+    // WEEBU DEBUG: Track last log timestamp for accurate time difference calculation
+    private static long lastLogTimestamp = 0;
+    private static final Object timestampLock = new Object();
+    
     // WEEBU DEBUG: Helper method to log to file - MATCHES FLUTTER FORMAT EXACTLY
     private static void logToFile(Context context, String message) {
         // Capture timestamp immediately at method entry
-        java.util.Date now = new java.util.Date();
+        long currentTimestamp = System.currentTimeMillis();
+        java.util.Date now = new java.util.Date(currentTimestamp);
+        
+        // Calculate time difference from last log
+        long timeDiff = 0;
+        synchronized (timestampLock) {
+            if (lastLogTimestamp > 0) {
+                timeDiff = currentTimestamp - lastLogTimestamp;
+            }
+            lastLogTimestamp = currentTimestamp;
+        }
         
         try {
             if (context != null) {
@@ -84,9 +98,9 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
                 utcDisplayFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
                 String utcTime = utcDisplayFormat.format(now);
                 
-                // Build log entry in EXACT Flutter format
+                // Build log entry in EXACT Flutter format with proper time difference
                 String logEntry = "◆◆◆" + utcTimestamp + "◆◆◆ 🔵 AUDIO-PLUGIN: " + 
-                                message + "   ➖" + utcTime + " +0➖   NAT\n";
+                                message + "   ➖" + utcTime + " +" + timeDiff + "➖   NAT\n";
                 
                 // Append with atomic write
                 java.io.FileOutputStream fos = new java.io.FileOutputStream(logFile, true);
@@ -119,13 +133,10 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             // WEEBU MODIFICATION: If starting detached (no UI), delay to avoid
             // race condition with flutter_background_geolocation plugin
             if (isDetached) {
-                // Check if we're in debug mode
-                boolean isDebug = (context.getApplicationInfo().flags & 
-                                   android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+                // TEMPORARY: Using 10 seconds for testing to analyze engine dependencies
+                int delayMs = 10000; // 10 seconds for testing (was 2000 for release)
                 
-                int delayMs = isDebug ? 10000 : 2000; // 10 seconds in debug, 2 seconds in release
-                
-                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay (DEBUG=" + isDebug + ") - Time: " + System.currentTimeMillis());
+                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay (TEST MODE) - Time: " + System.currentTimeMillis());
                 try {
                     Thread.sleep(delayMs);
                     logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed after " + delayMs + "ms - Time: " + System.currentTimeMillis());
