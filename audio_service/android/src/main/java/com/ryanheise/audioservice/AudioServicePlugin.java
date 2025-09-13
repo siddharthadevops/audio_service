@@ -60,6 +60,45 @@ import android.util.Log;
  */
 public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
     private static String flutterEngineId = "audio_service_engine";
+    
+    // WEEBU DEBUG: Helper method to log to file - MATCHES FLUTTER FORMAT EXACTLY
+    private static void logToFile(Context context, String message) {
+        // Capture timestamp immediately at method entry
+        java.util.Date now = new java.util.Date();
+        
+        try {
+            if (context != null) {
+                java.io.File appFlutterDir = new java.io.File(context.getDataDir(), "app_flutter");
+                if (!appFlutterDir.exists()) appFlutterDir.mkdirs();
+                
+                // Write to dedicated file for AudioPlugin
+                java.io.File logFile = new java.io.File(appFlutterDir, "weebu_log_native_audio_plugin.txt");
+                
+                // UTC timestamp in ISO8601 format with microseconds (add 000 to match Flutter format)
+                java.text.SimpleDateFormat utcFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+                utcFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                String utcTimestamp = utcFormat.format(now) + "000Z"; // Add 000 for microseconds and Z for UTC
+                
+                // UTC time format: dd/MM HH:mm ss.SSS (for consistency with Flutter)
+                java.text.SimpleDateFormat utcDisplayFormat = new java.text.SimpleDateFormat("dd/MM HH:mm ss.SSS");
+                utcDisplayFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                String utcTime = utcDisplayFormat.format(now);
+                
+                // Build log entry in EXACT Flutter format
+                String logEntry = "◆◆◆" + utcTimestamp + "◆◆◆ 🔵 AUDIO-PLUGIN: " + 
+                                message + "   ➖" + utcTime + " +0➖   NAT\n";
+                
+                // Append with atomic write
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(logFile, true);
+                fos.write(logEntry.getBytes("UTF-8"));
+                fos.flush();
+                fos.getFD().sync(); // Force to disk
+                fos.close();
+            }
+        } catch (Exception e) {
+            android.util.Log.i("WEEBU-AUDIO", "Log: " + message + " Error: " + e.getMessage());
+        }
+    }
     /** Must be called BEFORE any FlutterEngine is created. e.g. in Application class. */
     public static void setFlutterEngineId(String id) {
         flutterEngineId = id;
@@ -68,7 +107,9 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
         return flutterEngineId;
     }
     public static synchronized FlutterEngine getFlutterEngine(Context context) {
+        logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine ENTER - Thread: " + Thread.currentThread().getName() + " - Time: " + System.currentTimeMillis());
         FlutterEngine flutterEngine = FlutterEngineCache.getInstance().get(flutterEngineId);
+        logToFile(context, "🔴 AUDIO-PLUGIN: FlutterEngineCache checked - engine: " + (flutterEngine != null ? "EXISTS" : "NULL") + " - Time: " + System.currentTimeMillis());
         if (flutterEngine == null) {
             // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
             boolean isDetached = !(context instanceof Activity) && 
@@ -78,17 +119,20 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             // WEEBU MODIFICATION: If starting detached (no UI), delay 2 seconds to avoid
             // race condition with flutter_background_geolocation plugin
             if (isDetached) {
-                android.util.Log.i("AudioServicePlugin", "WEEBU: Detached mode detected, applying 2s delay before creating FlutterEngine");
+                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying 2s delay - Time: " + System.currentTimeMillis());
                 try {
                     Thread.sleep(2000); // 2 second delay
+                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed - Time: " + System.currentTimeMillis());
                 } catch (InterruptedException e) {
-                    android.util.Log.w("AudioServicePlugin", "WEEBU: Delay interrupted: " + e.getMessage());
+                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay interrupted: " + e.getMessage() + " - Time: " + System.currentTimeMillis());
                 }
             }
             
             // XXX: The constructor triggers onAttachedToEngine so this variable doesn't help us.
             // Maybe need a boolean flag to tell us we're currently loading the main flutter engine.
+            logToFile(context, "🔴 AUDIO-PLUGIN: Creating NEW FlutterEngine - START - Time: " + System.currentTimeMillis());
             flutterEngine = new FlutterEngine(context.getApplicationContext());
+            logToFile(context, "🔴 AUDIO-PLUGIN: Creating NEW FlutterEngine - END - Time: " + System.currentTimeMillis());
             String initialRoute = null;
             if (context instanceof FlutterActivity) {
                 final FlutterActivity activity = (FlutterActivity)context;
@@ -122,10 +166,15 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             if (initialRoute == null) {
                 initialRoute = "/";
             }
+            logToFile(context, "🔴 AUDIO-PLUGIN: Setting initial route: " + initialRoute + " - Time: " + System.currentTimeMillis());
             flutterEngine.getNavigationChannel().setInitialRoute(initialRoute);
+            logToFile(context, "🔴 AUDIO-PLUGIN: Executing Dart entry point - START - Time: " + System.currentTimeMillis());
             flutterEngine.getDartExecutor().executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault());
+            logToFile(context, "🔴 AUDIO-PLUGIN: Executing Dart entry point - END - Time: " + System.currentTimeMillis());
+            logToFile(context, "🔴 AUDIO-PLUGIN: Putting engine in cache - Time: " + System.currentTimeMillis());
             FlutterEngineCache.getInstance().put(flutterEngineId, flutterEngine);
         }
+        logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine EXIT - returning engine - Time: " + System.currentTimeMillis());
         return flutterEngine;
     }
 
