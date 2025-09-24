@@ -64,6 +64,8 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
     // WEEBU DEBUG: Track last log timestamp for accurate time difference calculation
     private static long lastLogTimestamp = 0;
     private static final Object timestampLock = new Object();
+    // WEEBU DEBUG: Shared lock for file writing synchronization across all native packages
+    private static final Object fileWriteLock = new Object();
     
     // WEEBU DEBUG: Helper method to log to file - MATCHES FLUTTER FORMAT EXACTLY
     private static void logToFile(Context context, String message) {
@@ -80,37 +82,40 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             lastLogTimestamp = currentTimestamp;
         }
         
-        try {
-            if (context != null) {
-                java.io.File appFlutterDir = new java.io.File(context.getDataDir(), "app_flutter");
-                if (!appFlutterDir.exists()) appFlutterDir.mkdirs();
-                
-                // Write to dedicated file for AudioPlugin
-                java.io.File logFile = new java.io.File(appFlutterDir, "weebu_log_native_audio_plugin.txt");
-                
-                // UTC timestamp in ISO8601 format with microseconds (add 000 to match Flutter format)
-                java.text.SimpleDateFormat utcFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-                utcFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-                String utcTimestamp = utcFormat.format(now) + "000Z"; // Add 000 for microseconds and Z for UTC
-                
-                // UTC time format: dd/MM HH:mm ss.SSS (for consistency with Flutter)
-                java.text.SimpleDateFormat utcDisplayFormat = new java.text.SimpleDateFormat("dd/MM HH:mm ss.SSS");
-                utcDisplayFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-                String utcTime = utcDisplayFormat.format(now);
-                
-                // Build log entry in EXACT Flutter format with proper time difference
-                String logEntry = "◆◆◆" + utcTimestamp + "◆◆◆ 🔵 AUDIO-PLUGIN: " + 
-                                message + "   ➖" + utcTime + " +" + timeDiff + "➖   NAT\n";
-                
-                // Append with atomic write
-                java.io.FileOutputStream fos = new java.io.FileOutputStream(logFile, true);
-                fos.write(logEntry.getBytes("UTF-8"));
-                fos.flush();
-                fos.getFD().sync(); // Force to disk
-                fos.close();
+        // Synchronize file writing to prevent race conditions with other native packages
+        synchronized (fileWriteLock) {
+            try {
+                if (context != null) {
+                    java.io.File appFlutterDir = new java.io.File(context.getDataDir(), "app_flutter");
+                    if (!appFlutterDir.exists()) appFlutterDir.mkdirs();
+                    
+                    // Write to dedicated file for AudioPlugin
+                    java.io.File logFile = new java.io.File(appFlutterDir, "weebu_log_native_audio_plugin.txt");
+                    
+                    // UTC timestamp in ISO8601 format with microseconds (add 000 to match Flutter format)
+                    java.text.SimpleDateFormat utcFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+                    utcFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                    String utcTimestamp = utcFormat.format(now) + "000Z"; // Add 000 for microseconds and Z for UTC
+                    
+                    // UTC time format: dd/MM HH:mm ss.SSS (for consistency with Flutter)
+                    java.text.SimpleDateFormat utcDisplayFormat = new java.text.SimpleDateFormat("dd/MM HH:mm ss.SSS");
+                    utcDisplayFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                    String utcTime = utcDisplayFormat.format(now);
+                    
+                    // Build log entry in EXACT Flutter format with proper time difference
+                    String logEntry = "◆◆◆" + utcTimestamp + "◆◆◆ 🔵 AUDIO-PLUGIN: " + 
+                                    message + "   ➖" + utcTime + " +" + timeDiff + "➖   NAT\n";
+                    
+                    // Append with atomic write - all within synchronized block
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(logFile, true);
+                    fos.write(logEntry.getBytes("UTF-8"));
+                    fos.flush();
+                    fos.getFD().sync(); // Force to disk
+                    fos.close();
+                }
+            } catch (Exception e) {
+                android.util.Log.i("WEEBU-AUDIO", "Log: " + message + " Error: " + e.getMessage());
             }
-        } catch (Exception e) {
-            android.util.Log.i("WEEBU-AUDIO", "Log: " + message + " Error: " + e.getMessage());
         }
     }
     /** Must be called BEFORE any FlutterEngine is created. e.g. in Application class. */
@@ -132,6 +137,8 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             
             // WEEBU MODIFICATION: If starting detached (no UI), delay to avoid
             // race condition with flutter_background_geolocation plugin
+            // COMMENTED OUT: Testing without delay to see if the 3-second delay in BackendServices.init() is sufficient
+            /*
             if (isDetached) {
                 // TEMPORARY: Using 10 seconds for testing to analyze engine dependencies
                 int delayMs = 10000; // 10 seconds for testing (was 2000 for release)
@@ -143,6 +150,10 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
                 } catch (InterruptedException e) {
                     logToFile(context, "🔴 AUDIO-PLUGIN: Delay interrupted: " + e.getMessage() + " - Time: " + System.currentTimeMillis());
                 }
+            }
+            */
+            if (isDetached) {
+                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, NO DELAY APPLIED - Time: " + System.currentTimeMillis());
             }
             
             // XXX: The constructor triggers onAttachedToEngine so this variable doesn't help us.
