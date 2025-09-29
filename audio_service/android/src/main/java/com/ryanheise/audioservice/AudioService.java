@@ -348,7 +348,15 @@ public class AudioService extends MediaBrowserServiceCompat {
 
     @Override
     public int onStartCommand(final Intent intent, int flags, int startId) {
+        AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onStartCommand ENTER - Intent: " +
+                (intent != null ? intent.getAction() : "null") +
+                " - Flags: " + flags + " - StartId: " + startId +
+                " - Thread: " + Thread.currentThread().getName() +
+                " - Time: " + System.currentTimeMillis());
+
         MediaButtonReceiver.handleIntent(mediaSession, intent);
+
+        AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onStartCommand EXIT - Time: " + System.currentTimeMillis());
         return START_NOT_STICKY;
     }
 
@@ -859,10 +867,20 @@ public class AudioService extends MediaBrowserServiceCompat {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onTaskRemoved ENTER - Intent: " +
+                (rootIntent != null ? rootIntent.getAction() : "null") +
+                " - Thread: " + Thread.currentThread().getName() +
+                " - Time: " + System.currentTimeMillis());
+
         if (listener != null) {
+            AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onTaskRemoved calling listener.onTaskRemoved() - Time: " + System.currentTimeMillis());
             listener.onTaskRemoved();
+            AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onTaskRemoved listener.onTaskRemoved() returned - Time: " + System.currentTimeMillis());
         }
+
+        AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onTaskRemoved calling super.onTaskRemoved() - Time: " + System.currentTimeMillis());
         super.onTaskRemoved(rootIntent);
+        AudioServicePlugin.logToFile(this, "🔴 AUDIO-SERVICE: onTaskRemoved EXIT - Time: " + System.currentTimeMillis());
     }
 
     public class MediaSessionCallback extends MediaSessionCompat.Callback {

@@ -68,9 +68,14 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
     private static final Object fileWriteLock = new Object();
     
     // WEEBU DEBUG: Helper method to log to file - MATCHES FLUTTER FORMAT EXACTLY
-    private static void logToFile(Context context, String message) {
-        // Capture timestamp immediately at method entry
-        long currentTimestamp = System.currentTimeMillis();
+    public static void logToFile(Context context, String message) {
+        logToFile(context, message, null);
+    }
+
+    // WEEBU DEBUG: Helper method to log to file with optional timestamp override
+    public static void logToFile(Context context, String message, Long overrideTimestamp) {
+        // Use override timestamp if provided, otherwise capture immediately at method entry
+        long currentTimestamp = overrideTimestamp != null ? overrideTimestamp : System.currentTimeMillis();
         java.util.Date now = new java.util.Date(currentTimestamp);
         
         // Calculate time difference from last log
@@ -126,29 +131,33 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
         return flutterEngineId;
     }
     public static synchronized FlutterEngine getFlutterEngine(Context context) {
-        logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine ENTER - Thread: " + Thread.currentThread().getName() + " - Time: " + System.currentTimeMillis());
+        // WEEBU MODIFICATION: Capture timestamp IMMEDIATELY at method entry
+        long entryTimestamp = System.currentTimeMillis();
+        String threadName = Thread.currentThread().getName();
+
+//        // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
+//        boolean isDetached = !(context instanceof Activity) &&
+//                             !(context instanceof FlutterActivity) &&
+//                             !(context instanceof AudioServiceFragmentActivity);
+//
+//        // WEEBU MODIFICATION: If starting detached (no UI), delay BEFORE any log writing to avoid
+//        // race condition with flutter_background_geolocation plugin
+//        if (isDetached) {
+//            // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
+//            // This delay happens BEFORE any logging to prevent file system contention
+//            int delayMs = 2000; // 2 seconds delay
+//            try {
+//                Thread.sleep(delayMs);
+//            } catch (InterruptedException e) {
+//                // Can't log here as we're delaying before any log operations
+//            }
+//        }
+
+        // Log with the ORIGINAL entry timestamp so it appears in correct chronological order
+        logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine ENTER - Thread: " + threadName, entryTimestamp);
         FlutterEngine flutterEngine = FlutterEngineCache.getInstance().get(flutterEngineId);
         logToFile(context, "🔴 AUDIO-PLUGIN: FlutterEngineCache checked - engine: " + (flutterEngine != null ? "EXISTS" : "NULL") + " - Time: " + System.currentTimeMillis());
         if (flutterEngine == null) {
-            // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
-            boolean isDetached = !(context instanceof Activity) && 
-                                 !(context instanceof FlutterActivity) && 
-                                 !(context instanceof AudioServiceFragmentActivity);
-            
-            // WEEBU MODIFICATION: If starting detached (no UI), delay to avoid
-            // race condition with flutter_background_geolocation plugin
-            if (isDetached) {
-                // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
-                int delayMs = 2000; // 2 seconds delay
-
-                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay - Time: " + System.currentTimeMillis());
-                try {
-                    Thread.sleep(delayMs);
-                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed after " + delayMs + "ms - Time: " + System.currentTimeMillis());
-                } catch (InterruptedException e) {
-                    logToFile(context, "🔴 AUDIO-PLUGIN: Delay interrupted: " + e.getMessage() + " - Time: " + System.currentTimeMillis());
-                }
-            }
             
             // XXX: The constructor triggers onAttachedToEngine so this variable doesn't help us.
             // Maybe need a boolean flag to tell us we're currently loading the main flutter engine.
