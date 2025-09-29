@@ -137,23 +137,17 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
             
             // WEEBU MODIFICATION: If starting detached (no UI), delay to avoid
             // race condition with flutter_background_geolocation plugin
-            // COMMENTED OUT: Testing without delay to see if the 3-second delay in BackendServices.init() is sufficient
-            /*
             if (isDetached) {
-                // TEMPORARY: Using 10 seconds for testing to analyze engine dependencies
-                int delayMs = 10000; // 10 seconds for testing (was 2000 for release)
-                
-                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay (TEST MODE) - Time: " + System.currentTimeMillis());
+                // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
+                int delayMs = 2000; // 2 seconds delay
+
+                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, applying " + delayMs + "ms delay - Time: " + System.currentTimeMillis());
                 try {
                     Thread.sleep(delayMs);
                     logToFile(context, "🔴 AUDIO-PLUGIN: Delay completed after " + delayMs + "ms - Time: " + System.currentTimeMillis());
                 } catch (InterruptedException e) {
                     logToFile(context, "🔴 AUDIO-PLUGIN: Delay interrupted: " + e.getMessage() + " - Time: " + System.currentTimeMillis());
                 }
-            }
-            */
-            if (isDetached) {
-                logToFile(context, "🔴 AUDIO-PLUGIN: Detached mode detected, NO DELAY APPLIED - Time: " + System.currentTimeMillis());
             }
             
             // XXX: The constructor triggers onAttachedToEngine so this variable doesn't help us.
