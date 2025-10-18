@@ -135,23 +135,23 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
         long entryTimestamp = System.currentTimeMillis();
         String threadName = Thread.currentThread().getName();
 
-//        // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
-//        boolean isDetached = !(context instanceof Activity) &&
-//                             !(context instanceof FlutterActivity) &&
-//                             !(context instanceof AudioServiceFragmentActivity);
-//
-//        // WEEBU MODIFICATION: If starting detached (no UI), delay BEFORE any log writing to avoid
-//        // race condition with flutter_background_geolocation plugin
-//        if (isDetached) {
-//            // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
-//            // This delay happens BEFORE any logging to prevent file system contention
-//            int delayMs = 2000; // 2 seconds delay
-//            try {
-//                Thread.sleep(delayMs);
-//            } catch (InterruptedException e) {
-//                // Can't log here as we're delaying before any log operations
-//            }
-//        }
+        // WEEBU MODIFICATION: Detect if we're starting in detached/headless mode
+        boolean isDetached = !(context instanceof Activity) &&
+                             !(context instanceof FlutterActivity) &&
+                             !(context instanceof AudioServiceFragmentActivity);
+
+        // WEEBU MODIFICATION: If starting detached (no UI), delay BEFORE any log writing to avoid
+        // race condition with flutter_background_geolocation plugin
+        if (isDetached) {
+            // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
+            // This delay happens BEFORE any logging to prevent file system contention
+            int delayMs = 2000; // 2 seconds delay
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException e) {
+                // Can't log here as we're delaying before any log operations
+            }
+        }
 
         // Log with the ORIGINAL entry timestamp so it appears in correct chronological order
         logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine ENTER - Thread: " + threadName, entryTimestamp);
