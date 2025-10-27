@@ -142,6 +142,8 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
 
         // WEEBU MODIFICATION: If starting detached (no UI), delay BEFORE any log writing to avoid
         // race condition with flutter_background_geolocation plugin
+        // DISABLED: This delay has been disabled as per request
+        /*
         if (isDetached) {
             // Using 2 seconds delay to prevent ANR when both plugins try to create Flutter engines
             // This delay happens BEFORE any logging to prevent file system contention
@@ -152,6 +154,7 @@ public class AudioServicePlugin implements FlutterPlugin, ActivityAware {
                 // Can't log here as we're delaying before any log operations
             }
         }
+        */
 
         // Log with the ORIGINAL entry timestamp so it appears in correct chronological order
         logToFile(context, "🔴 AUDIO-PLUGIN: getFlutterEngine ENTER - Thread: " + threadName, entryTimestamp);
